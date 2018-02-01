@@ -1,49 +1,665 @@
 <!doctype html>
 <html>
-	<head>
-		<meta charset="utf-8">
-		<meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
+  <head>
+    <meta charset="utf-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
 
-		<title>reveal.js</title>
+    <title>reveal.js</title>
 
-		<link rel="stylesheet" href="css/reveal.css">
-		<link rel="stylesheet" href="css/theme/black.css">
+    <link rel="stylesheet" href="css/reveal.css">
+    <link rel="stylesheet" href="css/theme/black.css">
 
-		<!-- Theme used for syntax highlighting of code -->
-		<link rel="stylesheet" href="lib/css/zenburn.css">
+    <!-- Theme used for syntax highlighting of code -->
+    <link rel="stylesheet" href="lib/css/zenburn.css">
 
-		<!-- Printing and PDF exports -->
-		<script>
-			var link = document.createElement( 'link' );
-			link.rel = 'stylesheet';
-			link.type = 'text/css';
-			link.href = window.location.search.match( /print-pdf/gi ) ? 'css/print/pdf.css' : 'css/print/paper.css';
-			document.getElementsByTagName( 'head' )[0].appendChild( link );
-		</script>
-	</head>
-	<body>
-		<div class="reveal">
-			<div class="slides">
-				<section>Slide 1</section>
-				<section>Slide 2</section>
-			</div>
-		</div>
+    <!-- Printing and PDF exports -->
+    <script>
+      var link = document.createElement( 'link' );
+      link.rel = 'stylesheet';
+      link.type = 'text/css';
+      link.href = window.location.search.match( /print-pdf/gi ) ? 'css/print/pdf.css' : 'css/print/paper.css';
+      document.getElementsByTagName( 'head' )[0].appendChild( link );
+    </script>
+  </head>
+  <body>
+    <div class="reveal">
+      <div class="slides">
+        <section>
+          <h1>Rusty Robots</h1>
 
-		<script src="lib/js/head.min.js"></script>
-		<script src="js/reveal.js"></script>
+          <h4>
+            Programming a
+            <a href="https://github.com/japaric/zen">self-balancing robot</a>
+            in Rust
+          </h4>
 
-		<script>
-			// More info about config & dependencies:
-			// - https://github.com/hakimel/reveal.js#configuration
-			// - https://github.com/hakimel/reveal.js#dependencies
-			Reveal.initialize({
-				dependencies: [
-					{ src: 'plugin/markdown/marked.js' },
-					{ src: 'plugin/markdown/markdown.js' },
-					{ src: 'plugin/notes/notes.js', async: true },
-					{ src: 'plugin/highlight/highlight.js', async: true, callback: function() { hljs.initHighlightingOnLoad(); } }
-				]
-			});
-		</script>
-	</body>
+          <p>
+            Jorge Aparicio (<a href="https://github.com/japaric">@japaric</a>)
+          </p>
+
+          <a href="https://japaric.github.io/fosdem-2018-02-04">https://japaric.github.io/fosdem-2018-02-04</a>
+        </section>
+
+        <section>
+          <section>
+            <h2>The robot: front view</h2>
+
+            <img alt="" src="static/front.jpeg"/>
+          </section>
+
+          <section>
+            <h2>The robot: side view</h2>
+
+            <img alt="" src="static/side.jpeg" width="40%"/>
+          </section>
+
+          <section>
+            <h2>Clearly unstable ...</h2>
+
+            <video autoplay loop src="static/fall.webm"></video>
+          </section>
+
+          <section>
+            <h2>The system model</h2>
+
+            <p>
+              Inverted pendulum
+            </p>
+
+            <a href="https://commons.wikimedia.org/wiki/File:Cart-pendulum.svg">
+              <img
+                  alt="Cart pendulum"
+                  src="static/Cart-pendulum.svg"
+                  style="background-color: white"
+                  width="40%"
+              />
+            </a>
+          </section>
+        </section>
+
+        <section>
+          <section>
+            <h2>Accelerometer</h2>
+
+            <p>
+              Measures <em>proper</em> acceleration
+            </p>
+
+            <img alt="" src="static/mpu9250.jpg" width="40%"/>
+
+            <p>
+              MPU9250
+            </p>
+          </section>
+
+          <section>
+            <h2>Tilt from gravity</h2>
+
+            <img alt="" width="75%" src="static/tilt.svg" style="background-color: white"/>
+          </section>
+
+          <section data-background-image="static/accelerometer-still.svg" data-background-size="contain">
+          </section>
+
+          <section data-background-image="static/accelerometer-motion.svg" data-background-size="contain">
+          </section>
+        </section>
+
+        <section>
+          <section>
+            <h2>gyroscope</h2>
+
+            <p>Measures angular rate (degrees per second)</p>
+
+            <img alt="" src="static/mpu9250.jpg" width="40%"/>
+
+            <p>
+              MPU9250
+            </p>
+          </section>
+
+          <section data-background-image="static/gyroscope-still.svg" data-background-size="contain">
+          </section>
+
+          <section data-background-image="static/gyroscope-calibrated.svg" data-background-size="contain">
+          </section>
+        </section>
+
+        <section>
+          <section>
+            <h2>Sensor fusion</h2>
+
+            <p>
+              Combine data from independent sensors to reduce uncertainty.
+            </p>
+          </section>
+
+          <section data-markdown>
+            <textarea data-template>
+### Kalman filters
+
+They are not filters; they are estimators
+
+``` rust
+impl Kalman {
+    // Start with the best guess of the tilt angle and
+    // the gyroscope bias
+    pub fn new(angle: f32, bias: f32) -> Self { .. }
+
+    // Feed in new measurements
+    // This returns an updated estimate of the tilt angle
+    pub fn update(
+        &mut self,
+        angle: f32, // from accelerometer readings
+        angular_rate: f32, // from gyroscope
+    ) -> f32 { .. }
+}
+```
+            </textarea>
+          </section>
+
+          <section data-background-image="static/kalman-still.svg" data-background-size="contain">
+          </section>
+
+          <section data-background-image="static/kalman-rotate.svg" data-background-size="contain">
+          </section>
+
+          <section data-background-image="static/kalman-rotate-fast.svg" data-background-size="contain">
+          </section>
+        </section>
+
+        <section>
+          <section>
+            <h2>Motors: H bridge</h2>
+
+            <img alt="" src="static/tb6612fng.jpg" width="40%"/>
+
+            <p>
+              TB6612FNG
+            </p>
+          </section>
+
+          <section>
+            <h2>H bridge: direction</h2>
+
+            <img
+                alt=""
+                src="static/H_bridge_operating.svg"
+                style="background-color: white"
+            />
+
+            <p>
+              16 possible states but only 4 are used: open, brake and the two above
+            </p>
+          </section>
+
+          <section>
+            <h2>H bridge: speed</h2>
+
+            <p>
+              Pulse Width Modulation (PWM)
+            </p>
+
+            <img
+                alt=""
+                src="static/pwm.jpg"
+            />
+          </section>
+        </section>
+
+        <section>
+          <section>
+            <h2>PID control</h2>
+
+            <img
+                alt=""
+                src="static/PID_en.svg"
+                style="background-color: white"
+            />
+
+            <ul>
+              <li>y(t) = measured tilt angle</li>
+              <li>u(t) = PWM duty cycle & direction</li>
+              <li>r(t) = desired tilt angle (set point)</li>
+              <li>e(t) = error</li>
+            </ul>
+          </section>
+
+          <section>
+            <h2>Stable</h2>
+
+            <video loop controls src="static/stable.webm"></video>
+          </section>
+
+          <section data-background-image="static/stable.svg" data-background-size="contain">
+          </section>
+
+          <section>
+            <h2>Unstable</h2>
+
+            <video loop controls src="static/unstable.webm"></video>
+          </section>
+
+          <section data-background-image="static/unstable.svg" data-background-size="contain">
+          </section>
+        </section>
+
+        <section>
+          <section>
+            <h2>Motion</h2>
+
+            <video autoplay loop src="static/forward.webm"></video>
+          </section>
+
+          <section data-background-image="static/forward.svg" data-background-size="contain">
+          </section>
+
+          <section>
+            <h2>Differential steering</h2>
+
+            <p>
+              Spin the wheels at different speeds
+            </p>
+
+            <img
+                alt=""
+                src="static/DifferentialSteering.svg"
+                style="background-color: white"
+            />
+          </section>
+        </section>
+
+        <section>
+          <h2>Wait ...</h2>
+
+          <p class="fragment">
+            Wasn't this talk about Rust?
+          </p>
+        </section>
+
+        <section>
+          <section>
+            <h2>Configuration</h2>
+
+            <p>
+              Board connections
+            </p>
+
+            <img alt="" src="static/conn.png"/>
+          </section>
+
+          <section data-markdown>
+            <textarea data-template>
+### Typed configuration
+
+Using type state and ownership
+
+``` rust
+let p = Peripherals::take().unwrap(); // singletons!
+
+// Split GPIOA peripheral into 16 independent pins
+let mut g = p.GPIOA.split(&mut rcc.apb2);
+
+let tx: PA9<Alternate<PushPull>> =
+    g.pa9.into_alternate_push_pull(&mut g.crh);
+
+let rx: PA10<Input<Floating>> = g.pa10;
+
+let serial = Serial::usart1(p.USART1, (tx, rx), /*..*/);
+
+rx.into_push_pull_output(&mut g.crh);
+//~^ error use of moved value: `rx`
+```
+            </textarea>
+          </section>
+        </section>
+
+        <section>
+          <section data-markdown>
+            <textarea data-template>
+### Generic drivers
+
+``` rust
+// crate: mpu9250
+
+/// Driver to interface the MPU9250 using an SPI bus
+pub struct Mpu9250<SPI, NCS> { spi: SPI, ncs: NCS }
+
+impl<E, SPI, NCS> Mpu9250<SPI, NCS>
+where
+    NCS: OutputPin,
+    SPI: spi::Write<u8, Error=E> + spi::Transfer<u8, Error=E>
+//  ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+{
+    /// Creates a new IMU driver
+    pub fn imu<D>(spi: SPI, ncs: NCS) -> Result<Self, E> {..}
+}
+```
+            </textarea>
+          </section>
+
+          <section>
+            <h2><a href="https://crates.io/crates/embedded-hal">embedded-hal</a> traits</h2>
+
+            <p>
+              Code reuse: Write once, use everywhere
+            </p>
+
+            <ul>
+              <li>Implementers (platforms)
+                <ul>
+                  <li>
+                    <a href="https://github.com/japaric/stm32f103xx-hal">stm32f103xx-hal</a>
+                    : STM32F103xx microcontrollers</li>
+                  <li>
+                    <a href="https://crates.io/crates/linux-embedded-hal">linux-embedded-hal</a>
+                    : Raspberry Pi and other SBC</li>
+                </ul>
+              </li>
+
+              <li>Drivers
+                <ul>
+                  <li>
+                    <a href="https://github.com/japaric/mpu9250">mpu9250</a>
+                    : Acceloremeter + gyroscope + compass</li>
+                  <li>
+                    <a href="https://crates.io/crates/mfrc522">mfrc522</a>
+                    : RFID tag reader / writter</li>
+                  <li>
+                    <a href="https://github.com/rust-embedded/rfcs/issues/39">And many more to come!</a>
+                  </li>
+                </ul>
+              </li>
+            </ul>
+          </section>
+        </section>
+
+        <section>
+          <section>
+            <h2>Communication</h2>
+
+            <img alt="" src="static/hc-06.jpg" width="40%"/>
+
+            <p>
+              HC-06: UART <-> Bluetooth
+            </p>
+          </section>
+
+          <section data-markdown>
+            <textarea data-template>
+### Binary serialization
+
+``` console
+$ cargo add byteorder
+```
+
+``` rust
+// infallible serialization (no Result)
+fn serialize(data: (i16, i16, i16, f32, f32)) -> [u8; 14] {
+    let mut buffer = [0; 14];
+    LE::write_i16(&mut buffer[..2], data.0);
+    LE::write_i16(&mut buffer[2..4], data.1);
+    // ..
+    buffer
+}
+```
+            </textarea>
+          </section>
+
+          <section data-markdown>
+            <textarea data-template>
+### Framing
+
+COBS: Consistent Overhead Byte Stuffing
+
+``` console
+$ cargo add cobs
+```
+
+``` rust
+let mut buffer = [0; 16];
+
+// serialize data
+let bytes = serialize(data);
+
+// make a COBS frame (2 byte overhead)
+cobs::encode(&bytes, &mut buffer);
+
+// put data on the wire
+serial.write_all(buffer);
+```
+            </textarea>
+          </section>
+
+          <section data-markdown>
+            <textarea data-template>
+### Checksum
+
+Cyclic Redundancy Check
+
+``` console
+$ cargo add crc16
+```
+
+``` rust
+let mut tx_buffer = [0; 18];
+let mut temp_buffer = [0; 16];
+
+// serialize data
+temp_buffer[..14].copy_from_slice(&serialize(data));
+
+// append CRC
+let crc = State::<ARC>::calculate(&temp_buffer[..14]);
+LE::write_u16(&mut temp_buffer[14..], crc);
+
+// make a COBS frame
+cobs::encode(&temp_buffer, &mut tx_buffer);
+
+serial.write_all(tx_buffer);
+```
+            </textarea>
+          </section>
+        </section>
+
+        <section>
+          <section>
+            <h2>Concurrency</h2>
+
+            <p>
+              <a href="https://docs.rs/cortex-m-rtfm/~0.3.1">Real Time For the Masses</a>
+              (RTFM) framework for multitasking
+            </p>
+
+            <ul>
+              <li>Periodic task (512 Hz)
+                <ul>
+                  <li>Read sensors</li>
+                  <li>Update Kalman filter</li>
+                  <li>Update PID controller </li>
+                  <li>Log data</li>
+                </ul>
+              </li>
+
+              <li>Rx task
+                <ul>
+                  <li>Parse received frame</li>
+                  <li>Update PID gains</li>
+                </ul>
+              </li>
+            </ul>
+          </section>
+
+          <section data-markdown>
+            <textarea data-template>
+### Resources
+
+Scoped static variables
+
+``` rust
+app! { // Declaration of tasks and resources
+    resources: {
+        static KALMAN: KalmanFilter;
+        static MPU9250: Mpu9250;
+        static PID: PidController;
+        static SET_POINT: f32 = 0.;
+    },
+
+    tasks: {
+        SYS_TICK: { // Periodic
+            resources: [KALMAN, MPU9250, PID, SET_POINT],
+        },
+        DMA1_CHANNEL5: { // Rx
+            resources: [PID, SET_POINT],
+```
+
+``` rust
+// Task body
+fn rx(t: &mut Threshold, mut r: DMA1_CHANNEL5::Resources) {
+    r.PID.lock_mut(t, |pid| *pid = 1.); // OK
+    r.KALMAN.update(..); //~ error: not in scope
+}
+```
+            </textarea>
+          </section>
+        </section>
+
+        <section>
+          <section>
+            <h2>Miscellany</h2>
+          </section>
+
+          <section>
+            <h3>CPU usage</h3>
+
+            <p>
+              21% CPU @ 64 MHz, no FPU, control loop @ 512 Hz
+            </p>
+
+            <img alt="" src="static/cpu.svg"/>
+          </section>
+
+          <section data-markdown>
+            <textarea data-template>
+## Binary size
+
+<400 LoC, 100% Rust code
+
+8.5 KB Flash (2 KB are softfp), 140 B RAM (no heap)
+
+``` console
+$ arm-none-eabi-size zen
+  text    data     bss     dec     hex filename
+  8658      68      72    8798    225e zen
+```
+
+``` console
+$ arm-none-eabi-nm -r --size-sort -C zen
+000007b8 t zen::init
+000004e6 T SYS_TICK
+00000260 T compiler_builtins::float::add::__addsf3
+0000023c t m::ll::atanf
+00000204 T compiler_builtins::float::div::__divsf3
+00000200 r .Lconst.5
+000001ba T compiler_builtins::float::mul::__mulsf3
+00000142 t <f32 as m::Float>::atan2
+000000f4 T main
+000000f0 R INTERRUPTS
+```
+            </textarea>
+          </section>
+
+          <section data-background-image="static/dependencies.png" data-background-size="contain">
+          </section>
+        </section>
+
+        <section>
+          <h2>In conclusion</h2>
+
+          <p>
+            Rust ...
+          </p>
+
+          <ul>
+            <li>is small</li>
+            <li>is fast</li>
+            <li>is memory safe</li>
+            <li>lets you write more correct code</li>
+            <li>lets you easily use third party code</li>
+            <li>is good for code reuse</li>
+          </ul>
+        </section>
+
+        <section>
+          <h2>Thank you!</h2>
+
+          <a href="https://mobile.twitter.com/japaricious/status/845697935572656128">
+            <video autoplay loop src="static/disturbances.webm"></video>
+          </a>
+
+          <p>
+            Questions?
+          </p>
+        </section>
+
+        <section>
+          <h2>References</h2>
+
+          <ul>
+            <li>
+              <a href="https://github.com/japaric/zen">
+                GitHub project page
+              </a>
+            </li>
+
+            <li>
+              <a href="http://blog.japaric.io/brave-new-io/">
+                Details about embedded-hal, scoped singletons and I/O abstractions
+              </a>
+            </li>
+
+            <li>
+              <a href="http://www.bzarg.com/p/how-a-kalman-filter-works-in-pictures/">
+                Graphical explanation of Kalman filters
+              </a>
+            </li>
+
+            <li>
+              <a href="https://github.com/japaric/fosdem-2018-02-04/tree/master/data">
+                Data and Python scripts used for the plots
+              </a>
+            </li>
+
+            <li>
+              <a href="http://blog.japaric.io/cpu-monitor">
+                How to measure CPU usage
+              </a>
+            </li>
+
+            <li>
+              <a href="http://blog.japaric.io/">
+                Check my blog for more embedded stuff.
+              </a>
+            </li>
+          </ul>
+        </section>
+      </div>
+    </div>
+
+    <script src="lib/js/head.min.js"></script>
+    <script src="js/reveal.js"></script>
+
+    <script>
+      // More info about config & dependencies:
+      // - https://github.com/hakimel/reveal.js#configuration
+      // - https://github.com/hakimel/reveal.js#dependencies
+      Reveal.initialize({
+        dependencies: [
+          { src: 'plugin/markdown/marked.js' },
+          { src: 'plugin/markdown/markdown.js' },
+          { src: 'plugin/notes/notes.js', async: true },
+          { src: 'plugin/highlight/highlight.js', async: true, callback: function() { hljs.initHighlightingOnLoad(); } }
+        ]
+      });
+    </script>
+  </body>
 </html>
